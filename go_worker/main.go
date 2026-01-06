@@ -63,7 +63,7 @@ func main() {
 	// -------------------------
 	// Keep-alive ping a cada 1 minuto
 	// -------------------------
-	startKeepAlive(1 * time.Minute)
+	startKeepAlive(60 * time.Minute)
 
 	// -------------------------
 	// Ler variáveis de ambiente
