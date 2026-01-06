@@ -3,7 +3,7 @@ import { ApiExcludeEndpoint } from '@nestjs/swagger';
 
 @Controller()
 export class AppController {
-  @Get('/')
+  @Get('/api')
   health() {
     return {
       app: 'GDASH API',
