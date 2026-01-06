@@ -1,0 +1,27 @@
+# Envs
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+
+# Go
+bin/
+*.exe
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Logs
+*.log
+
+# Docker
+*.pid
+
+# IDE
+.vscode/
+.idea/

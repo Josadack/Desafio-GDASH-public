@@ -1,0 +1,82 @@
+services:
+  # ----------------------
+  # MongoDB
+  # ----------------------
+  mongo:
+    image: mongo:7
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: gdash
+    networks:
+      - appnet
+
+  # ----------------------
+  # RabbitMQ
+  # ----------------------
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - appnet
+
+  # ----------------------
+  # Producer (Python collector)
+  # ----------------------
+  producer:
+    build: ./Python
+    restart: always
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    env_file:
+      - ./Python/.env
+    ports:
+      - "8001:8001"
+    networks:
+      - appnet
+
+  # ----------------------
+  # Worker Go
+  # ----------------------
+  go_worker:
+    build: ./go_worker
+    restart: always
+    depends_on:
+      rabbitmq:
+        condition: service_started
+      nest_api:
+        condition: service_started
+    env_file:
+      - ./go_worker/.env
+    networks:
+      - appnet
+
+  # ----------------------
+  # NestJS API
+  # ----------------------
+  nest_api:
+    build: ./Back-end/desafio-gdash
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./Back-end/desafio-gdash/.env
+    depends_on:
+      mongo:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    networks:
+      - appnet
+
+# ----------------------
+# Networks
+# ----------------------
+networks:
+  appnet:
+    driver: bridge
