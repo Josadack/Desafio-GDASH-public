@@ -24,6 +24,7 @@ WEATHER_KEY = os.getenv("WEATHER_KEY")
 CITY_DEFAULT = os.getenv("CITY", "Guarulhos")
 RECONNECT_DELAY = int(os.getenv("RECONNECT_DELAY", "5"))
 PORT = int(os.getenv("PORT", "3000"))
+KEEP_ALIVE_INTERVAL = int(os.getenv("KEEP_ALIVE_INTERVAL", "60"))  # em segundos
 
 if not WEATHER_KEY:
     print("[WARN] WEATHER_KEY não definido — configure sua key do OpenWeather")
@@ -41,6 +42,19 @@ def start_health_server():
     server = HTTPServer(("0.0.0.0", PORT), HealthHandler)
     print(f"🩺 Health server rodando na porta {PORT}")
     server.serve_forever()
+
+# -----------------------------------------------------------
+# Keep-alive para manter o serviço ativo
+# -----------------------------------------------------------
+def keep_alive():
+    url = f"http://localhost:{PORT}/"
+    while True:
+        try:
+            requests.get(url, timeout=5)
+            print(f"💓 Keep-alive ping enviado para {url}")
+        except Exception as e:
+            print(f"[Aviso] Keep-alive falhou: {e}")
+        time.sleep(KEEP_ALIVE_INTERVAL)
 
 # -----------------------------------------------------------
 # API de clima
@@ -161,4 +175,5 @@ def main():
 # -----------------------------------------------------------
 if __name__ == "__main__":
     threading.Thread(target=start_health_server, daemon=True).start()
+    threading.Thread(target=keep_alive, daemon=True).start()  # Keep-alive ping
     main()
