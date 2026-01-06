@@ -1,31 +1,51 @@
-# weather_collector.py (antigo producer.py)
+# weather_collector.py
 
 import os
 import time
 import json
+import threading
 from datetime import datetime
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
 import requests
 import pika
 from pika.exceptions import AMQPConnectionError, ProbableAuthenticationError
 from dotenv import load_dotenv
 
+# -----------------------------------------------------------
+# ENV
+# -----------------------------------------------------------
 load_dotenv()
 
 RABBIT_URL = os.getenv("RABBIT_URL", "amqp://guest:guest@rabbitmq:5672/")
-QUEUE_IN = os.getenv("QUEUE_IN", "weather_queue")               # Nest envia cidade
-QUEUE_OUT = os.getenv("QUEUE_OUT", "weather_full_queue")       # Python envia clima pronto
+QUEUE_IN = os.getenv("QUEUE_IN", "weather_queue")
+QUEUE_OUT = os.getenv("QUEUE_OUT", "weather_full_queue")
 WEATHER_KEY = os.getenv("WEATHER_KEY")
 CITY_DEFAULT = os.getenv("CITY", "Guarulhos")
 RECONNECT_DELAY = int(os.getenv("RECONNECT_DELAY", "5"))
+PORT = int(os.getenv("PORT", "3000"))
 
 if not WEATHER_KEY:
-    print("[WARN] WEATHER_KEY não definido — configure sua key do OpenWeather no .env")
+    print("[WARN] WEATHER_KEY não definido — configure sua key do OpenWeather")
+
+# -----------------------------------------------------------
+# Health server (necessário para Render Free)
+# -----------------------------------------------------------
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+
+def start_health_server():
+    server = HTTPServer(("0.0.0.0", PORT), HealthHandler)
+    print(f"🩺 Health server rodando na porta {PORT}")
+    server.serve_forever()
 
 # -----------------------------------------------------------
 # API de clima
 # -----------------------------------------------------------
 def fetch_weather(city):
-    """Chama OpenWeather e normaliza o resultado."""
     try:
         url = (
             f"http://api.openweathermap.org/data/2.5/weather?"
@@ -57,9 +77,8 @@ def fetch_weather(city):
         print(f"[ERRO] Falha ao buscar clima ({city}): {e}")
         return None
 
-
 # -----------------------------------------------------------
-# Conexão com RabbitMQ com retry infinito
+# Conexão RabbitMQ (retry infinito)
 # -----------------------------------------------------------
 def connect_channel():
     params = pika.URLParameters(RABBIT_URL)
@@ -80,12 +99,11 @@ def connect_channel():
             print(f"[Aviso] Falha ao conectar RabbitMQ: {e}. Retentando em {RECONNECT_DELAY}s...")
             time.sleep(RECONNECT_DELAY)
         except Exception as e:
-            print(f"[ERRO] Erro inesperado ao conectar: {e}. Retentando...")
+            print(f"[ERRO] Erro inesperado: {e}. Retentando...")
             time.sleep(RECONNECT_DELAY)
 
-
 # -----------------------------------------------------------
-# Callback ao receber cidade do NestJS
+# Callback RabbitMQ
 # -----------------------------------------------------------
 def on_request(ch, method, properties, body):
     try:
@@ -96,33 +114,29 @@ def on_request(ch, method, properties, body):
 
         weather = fetch_weather(city)
         if not weather:
-            print(f"[Aviso] Não foi possível obter clima para {city}. ACK e continua.")
+            print(f"[Aviso] Falha ao obter clima de {city}. ACK.")
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
-
-        out_body = json.dumps(weather)
 
         ch.basic_publish(
             exchange="",
             routing_key=QUEUE_OUT,
-            body=out_body.encode("utf-8"),
+            body=json.dumps(weather).encode("utf-8"),
             properties=pika.BasicProperties(delivery_mode=2)
         )
 
         print(f"📤 Clima enviado → {QUEUE_OUT}: {weather}")
-
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
-        print(f"[ERRO] Falha no callback: {e}")
+        print(f"[ERRO] Callback falhou: {e}")
         try:
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
         except:
             pass
 
-
 # -----------------------------------------------------------
-# Main
+# Main worker
 # -----------------------------------------------------------
 def main():
     print("🌤️ Iniciando Weather Collector (Python)...")
@@ -135,13 +149,16 @@ def main():
     try:
         ch.start_consuming()
     except KeyboardInterrupt:
-        print("\n[Producer] Encerrando...")
+        print("\n[Worker] Encerrando...")
     finally:
         try:
             conn.close()
         except:
             pass
 
-
+# -----------------------------------------------------------
+# Bootstrap
+# -----------------------------------------------------------
 if __name__ == "__main__":
+    threading.Thread(target=start_health_server, daemon=True).start()
     main()
