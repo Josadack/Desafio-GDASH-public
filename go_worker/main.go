@@ -8,6 +8,9 @@ import (
 	"time"
 )
 
+// -------------------------
+// Health server (Render)
+// -------------------------
 func startHealthServer() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -23,11 +26,44 @@ func startHealthServer() {
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
+// -------------------------
+// Keep-alive ping (manter Render acordado)
+// -------------------------
+func startKeepAlive(interval time.Duration) {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	url := "http://localhost:" + port + "/"
+
+	go func() {
+		for {
+			resp, err := http.Get(url)
+			if err != nil {
+				log.Println("[KeepAlive] Falha ao pingar:", err)
+			} else {
+				resp.Body.Close()
+				log.Println("💓 Keep-alive ping enviado para", url)
+			}
+			time.Sleep(interval)
+		}
+	}()
+}
+
+// -------------------------
+// Main
+// -------------------------
 func main() {
 	// -------------------------
-	// Health server (Render)
+	// Health server
 	// -------------------------
 	go startHealthServer()
+
+	// -------------------------
+	// Keep-alive ping a cada 1 minuto
+	// -------------------------
+	startKeepAlive(1 * time.Minute)
 
 	// -------------------------
 	// Ler variáveis de ambiente
