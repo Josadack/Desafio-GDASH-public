@@ -25,7 +25,7 @@ services:
       - appnet
 
   # ----------------------
-  # Producer (Python collector)
+  # Producer (Python)
   # ----------------------
   producer:
     build: ./Python
@@ -41,10 +41,12 @@ services:
       - appnet
 
   # ----------------------
-  # Worker Go
+  # Go Worker
   # ----------------------
   go_worker:
-    build: ./go_worker
+    build:
+      context: ./go_worker
+      dockerfile: Dockerfile
     restart: always
     depends_on:
       rabbitmq:
@@ -57,10 +59,12 @@ services:
       - appnet
 
   # ----------------------
-  # NestJS API
+  # NestJS API (DEV)
   # ----------------------
   nest_api:
-    build: ./Back-end/desafio-gdash
+    build:
+      context: ./Back-end/desafio-gdash
+      dockerfile: Dockerfile.dev
     restart: always
     ports:
       - "3000:3000"
@@ -75,7 +79,7 @@ services:
       - appnet
 
 # ----------------------
-# Networks
+# Network
 # ----------------------
 networks:
   appnet:
