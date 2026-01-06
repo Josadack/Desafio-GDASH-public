@@ -3,14 +3,11 @@ import { ApiExcludeEndpoint } from '@nestjs/swagger';
 
 @Controller()
 export class AppController {
-  @Get('/api')
-  health() {
-    return {
-      app: 'GDASH API',
-      status: 'online',
-      basePath: '/api',
-      swagger: '/swagger',
-      timestamp: new Date().toISOString(),
-    };
+  constructor() {}
+
+  @ApiExcludeEndpoint()
+  @Get()
+  async redirect(@Res() resposta: any) {
+    return resposta.redirect('/swagger');
   }
 }

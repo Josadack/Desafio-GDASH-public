@@ -6,9 +6,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Prefixo GLOBAL
-app.setGlobalPrefix('api', {
-  exclude: ['/', '/swagger'],
-});
+  app.setGlobalPrefix('api');
 
   const config = new DocumentBuilder()
     .setTitle('⛈️ API - Projeto GDASH App')
