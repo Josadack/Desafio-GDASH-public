@@ -7,6 +7,7 @@ import { AuthModule } from "./auth/auth.module";
 import { WeatherModule } from "./weather/weather.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
 import { RabbitmqModule } from "./rabbitmq/rabbitmq.module";
+import { HealthController } from "./health.controller";
 
 @Module({
   imports: [
@@ -24,7 +25,7 @@ import { RabbitmqModule } from "./rabbitmq/rabbitmq.module";
     WeatherModule,
     DashboardModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [],
 })
 export class AppModule {}
