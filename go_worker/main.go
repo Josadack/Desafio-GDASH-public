@@ -9,7 +9,7 @@ import (
 )
 
 // -------------------------
-// Health server (Render)
+// Health server (Render exige)
 // -------------------------
 func startHealthServer() {
 	port := os.Getenv("PORT")
@@ -27,9 +27,34 @@ func startHealthServer() {
 }
 
 // -------------------------
-// Keep-alive ping (manter Render acordado)
+// Keep-alive REAL (ping externo)
 // -------------------------
-func startKeepAlive(interval time.Duration) {
+func startExternalKeepAlive(interval time.Duration) {
+	url := os.Getenv("BACKEND_HEALTH_URL")
+	if url == "" {
+		log.Println("[KeepAlive] BACKEND_HEALTH_URL não definido — keep-alive externo desativado")
+		return
+	}
+
+	go func() {
+		for {
+			resp, err := http.Get(url)
+			if err != nil {
+				log.Println("[KeepAlive] Falha ao pingar backend:", err)
+			} else {
+				resp.Body.Close()
+				log.Println("💓 Keep-alive externo enviado para", url)
+			}
+			time.Sleep(interval)
+		}
+	}()
+}
+
+// -------------------------
+// (Opcional) Keep-alive local
+// Não impede sleep, mas não quebra nada
+// -------------------------
+func startLocalKeepAlive(interval time.Duration) {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3000"
@@ -40,11 +65,8 @@ func startKeepAlive(interval time.Duration) {
 	go func() {
 		for {
 			resp, err := http.Get(url)
-			if err != nil {
-				log.Println("[KeepAlive] Falha ao pingar:", err)
-			} else {
+			if err == nil {
 				resp.Body.Close()
-				log.Println("💓 Keep-alive ping enviado para", url)
 			}
 			time.Sleep(interval)
 		}
@@ -61,9 +83,10 @@ func main() {
 	go startHealthServer()
 
 	// -------------------------
-	// Keep-alive ping a cada 1 minuto
+	// Keep-alives
 	// -------------------------
-	startKeepAlive(60 * time.Minute)
+	startExternalKeepAlive(5 * time.Minute) // Render não dorme
+	startLocalKeepAlive(10 * time.Minute)   // opcional
 
 	// -------------------------
 	// Ler variáveis de ambiente
