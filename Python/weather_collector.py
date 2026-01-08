@@ -24,7 +24,7 @@ WEATHER_KEY = os.getenv("WEATHER_KEY")
 CITY_DEFAULT = os.getenv("CITY", "Guarulhos")
 RECONNECT_DELAY = int(os.getenv("RECONNECT_DELAY", "5"))
 PORT = int(os.getenv("PORT", "3000"))
-KEEP_ALIVE_INTERVAL = int(os.getenv("KEEP_ALIVE_INTERVAL", "60"))  # em segundos
+KEEP_ALIVE_INTERVAL = int(os.getenv("KEEP_ALIVE_INTERVAL", "120"))  # em segundos
 
 if not WEATHER_KEY:
     print("[WARN] WEATHER_KEY não definido — configure sua key do OpenWeather")
@@ -47,13 +47,13 @@ def start_health_server():
 # Keep-alive para manter o serviço ativo
 # -----------------------------------------------------------
 def keep_alive():
-    url = f"http://localhost:{PORT}/"
+    url = "https://desafio-gdash-public.onrender.com/api/health"
     while True:
         try:
-            requests.get(url, timeout=5)
-            print(f"💓 Keep-alive ping enviado para {url}")
+            requests.get(url, timeout=10)
+            print(f"💓 Keep-alive externo enviado para {url}")
         except Exception as e:
-            print(f"[Aviso] Keep-alive falhou: {e}")
+            print(f"[Aviso] Keep-alive externo falhou: {e}")
         time.sleep(KEEP_ALIVE_INTERVAL)
 
 # -----------------------------------------------------------
