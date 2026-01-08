@@ -8,7 +8,6 @@ import { RabbitmqService } from '../../rabbitmq/services/rabbitmq.service';
 
 @Injectable()
 export class WeatherService {
-
   constructor(
     @InjectModel(Weather.name)
     private readonly weatherModel: Model<WeatherDocument>,
@@ -21,20 +20,31 @@ export class WeatherService {
     return { status: 'queued', city: dto.city };
   }
 
-  // Substituir esta função:
+  // salva log vindo do worker
   async saveLog(dto: WeatherLogDto) {
     const created = new this.weatherModel(dto);
     await created.save();
     return { status: 'saved', id: created._id };
   }
 
+  // histórico completo
   async findAll() {
-    return this.weatherModel.find().sort({ timestamp: -1 }).exec();
+    return this.weatherModel
+      .find()
+      .sort({ createdAt: -1 })
+      .lean();
   }
 
- async countRequests(): Promise<number> {
-  return this.weatherModel.countDocuments().exec();
-}
+  // total de registros
+  async countRequests(): Promise<number> {
+    return this.weatherModel.countDocuments().exec();
+  }
 
+  // último registro REAL
+  async findLast() {
+    return this.weatherModel
+      .findOne()
+      .sort({ createdAt: -1 })
+      .lean();
+  }
 }
-
